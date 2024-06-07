@@ -1,0 +1,82 @@
+import edu.cmu.sphinx.frontend.util.Microphone;
+import edu.cmu.sphinx.recognizer.Recognizer;
+import edu.cmu.sphinx.result.Result;
+import edu.cmu.sphinx.util.props.ConfigurationManager;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class VoiceRecognitionScheduler {
+
+    private static final String KEYWORD = "schedule";
+    private static final String[] COMMANDS = {"create", "read", "update", "delete"};
+
+    public static void main(String[] args) {
+        try {
+            VoiceRecognitionScheduler app = new VoiceRecognitionScheduler();
+            app.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void start() throws Exception {
+        ConfigurationManager cm = new ConfigurationManager(null);
+        cm.setProperty("recognizer", "edu.cmu.sphinx.recognizer.Recognizer",
+                "default");
+        cm.setProperty("mic", "edu.cmu.sphinx.frontend.util.Microphone",
+                "type");
+        Recognizer recognizer = (Recognizer) cm.lookup("recognizer");
+        recognizer.allocate();
+
+        Microphone microphone = (Microphone) cm.lookup("mic");
+        if (!microphone.startRecording()) {
+            System.err.println("Failed to start microphone.");
+            recognizer.deallocate();
+            return;
+        }
+
+        System.out.println("Ready to receive voice commands...");
+
+        while (true) {
+            Result result = recognizer.recognize();
+            String hypothesis = result.getBestFinalResultNoFiller();
+            processCommand(hypothesis);
+        }
+    }
+
+    private void processCommand(String hypothesis) {
+        String[] words = hypothesis.split("\\s+");
+        if (words.length > 0 && words[0].equalsIgnoreCase(KEYWORD)) {
+            if (words.length > 1) {
+                String command = words[1];
+                if (isValidCommand(command)) {
+                    switch (command.toLowerCase()) {
+                        case "create":
+                            System.out.println("Creating a new schedule...");
+                            break;
+                        case "read":
+                            System.out.println("Reading the current schedule...");
+                            break;
+                        case "update":
+                            System.out.println("Updating the current schedule...");
+                            break;
+                        case "delete":
+                            System.out.println("Deleting the current schedule...");
+                            break;
+                    }
+                } else {
+                    System.out.println("Invalid command. Please use 'create', 'read', 'update', or 'delete'.");
+                }
+            } else {
+                System.out.println("Please specify a command: 'create', 'read', 'update', or 'delete'.");
+            }
+        } else {
+            System.out.println("Please start your command with the keyword '" + KEYWORD + "'.");
+        }
+    }
+
+    private boolean isValidCommand(String command) {
+        return new HashSet<>(Arrays.asList(COMMANDS)).contains(command);
+    }
+}
